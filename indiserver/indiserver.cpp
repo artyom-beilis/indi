@@ -791,6 +791,36 @@ class LocalDvrInfo: public DvrInfo
         }
 };
 
+#ifdef INDI_AS_LIBRARY
+class ThreadDvrInfo: public DvrInfo
+{
+        ev::io     eio;         /* Event loop io events */
+        std::thread worker;
+
+    protected:
+        ThreadDvrInfo(const ThreadDvrInfo &model);
+
+    public:
+        std::string envDev;
+        std::string envConfig;
+        std::string envSkel;
+        std::string envPrefix;
+
+        ThreadDvrInfo();
+        virtual ~ThreadDvrInfo();
+
+        virtual void start();
+
+        virtual ThreadDvrInfo * clone() const;
+
+        virtual const std::string remoteServerUid() const
+        {
+            return "";
+        }
+};
+
+#endif
+
 class RemoteDvrInfo: public DvrInfo
 {
         /* open a connection to the given host and port or die.
@@ -895,6 +925,27 @@ static int readFdError(int
 
 static void * attachSharedBuffer(int fd, size_t &size);
 static void dettachSharedBuffer(int fd, void * ptr, size_t size);
+
+#ifdef INDI_AS_LIBRARY
+
+extern "C" int indiserver_main()
+{
+    /* start each driver */
+    std::string dvrName = "thread_driver";
+    DvrInfo * dr = new ThreadDvrInfo();
+    dr->name = dvrName;
+    dr->start();
+    
+    /* announce we are online */
+    (new TcpServer(port))->listen();
+
+    /* handle new clients and all io */
+    loop.loop();
+
+    return (0);
+}
+
+#else
 
 int main(int ac, char *av[])
 {
@@ -1049,6 +1100,8 @@ int main(int ac, char *av[])
     log("unexpected return from event loop\n");
     return (1);
 }
+
+#endif // INDI_AS_LIBRARY
 
 /* record we have started and our args */
 static void logStartup(int ac, char *av[])
@@ -1270,6 +1323,7 @@ void LocalDvrInfo::start()
     // pushmsg can kill mp. do at end
     pushMsg(mp);
 }
+
 
 void RemoteDvrInfo::extractRemoteId(const std::string &name, std::string &o_host, int &o_port, std::string &o_dev) const
 {
@@ -2676,6 +2730,89 @@ void DvrInfo::log(const std::string &str) const
 }
 
 ConcurrentSet<DvrInfo> DvrInfo::drivers;
+
+#ifdef INDI_AS_LIBRARY
+
+
+ThreadDvrInfo::ThreadDvrInfo(): DvrInfo(false)
+{
+}
+
+ThreadDvrInfo::ThreadDvrInfo(const ThreadDvrInfo &model):
+    DvrInfo(model),
+    envDev(model.envDev),
+    envConfig(model.envConfig),
+    envSkel(model.envSkel),
+    envPrefix(model.envPrefix)
+{
+}
+
+ThreadDvrInfo::~ThreadDvrInfo()
+{
+}
+
+ThreadDvrInfo * ThreadDvrInfo::clone() const
+{
+    return new ThreadDvrInfo(*this);
+}
+
+extern "C" int event_loop_main(int,int);
+
+
+void ThreadDvrInfo::start()
+{
+    Msg *mp;
+    int rp[2], wp[2];
+
+#ifdef OSX_EMBEDED_MODE
+    fprintf(stderr, "STARTING \"%s\"\n", name.c_str());
+    fflush(stderr);
+#endif
+
+    /* build three pipes: r, w and error*/
+    if (useSharedBuffer)
+    {
+        log("Unsupported shared buffer mode\n");
+        Bye();
+    }
+    else
+    {
+        if (pipe(rp) < 0)
+        {
+            log(fmt("read pipe: %s\n", strerror(errno)));
+            Bye();
+        }
+        if (pipe(wp) < 0)
+        {
+            log(fmt("write pipe: %s\n", strerror(errno)));
+            Bye();
+        }
+    }
+
+    std::thread local_thread([=]() {
+        fprintf(stderr,"Starting event loop with fd %d/%d\n",wp[0],rp[1]);
+        event_loop_main(wp[0],rp[1]);
+        /* don't need child's side of pipes on exit */
+        ::close(wp[0]);
+        ::close(rp[1]);
+        
+    });
+
+    worker = std::move(local_thread);
+    worker.detach();
+
+    setFds(rp[0], wp[1]);
+
+
+    XMLEle *root = addXMLEle(NULL, "getProperties");
+    addXMLAtt(root, "version", TO_STRING(INDIV));
+    mp = new Msg(nullptr, root);
+
+    // pushmsg can kill mp. do at end
+    pushMsg(mp);
+}
+
+#endif
 
 LocalDvrInfo::LocalDvrInfo(): DvrInfo(true)
 {

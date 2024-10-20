@@ -36,5 +36,6 @@ typedef struct driverio
     unsigned int outPos;
 } driverio;
 
+void driverio_custom_fostream(FILE *f);
 void driverio_init(driverio * dio);
 void driverio_finish(driverio * dio);

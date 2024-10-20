@@ -271,6 +271,12 @@ static void driverio_flush(driverio * dio, const void * additional, size_t add_s
 
 
 static int driverio_is_unix = -1;
+static FILE *driver_io_custom_fstream = NULL;
+
+void driverio_custom_fostream(FILE *f)
+{
+    driver_io_custom_fstream = f;
+}
 
 static int is_unix_io()
 {
@@ -357,9 +363,28 @@ static void driverio_finish_stdout(driverio * dio)
     pthread_mutex_unlock(&stdout_mutex);
 }
 
+static void driverio_init_custom(driverio * dio)
+{
+    dio->userio = *userio_file();
+    dio->user = driver_io_custom_fstream;
+    pthread_mutex_lock(&stdout_mutex);
+}
+
+static void driverio_finish_custom(driverio * dio)
+{
+    (void)dio;
+    fflush(driver_io_custom_fstream);
+    pthread_mutex_unlock(&stdout_mutex);
+}
+
+
 void driverio_init(driverio * dio)
 {
-    if (is_unix_io())
+    if(driver_io_custom_fstream)
+    {
+        driverio_init_custom(dio);
+    }
+    else if (is_unix_io())
     {
         driverio_init_unix(dio);
     }
@@ -371,7 +396,11 @@ void driverio_init(driverio * dio)
 
 void driverio_finish(driverio * dio)
 {
-    if (is_unix_io())
+    if(driver_io_custom_fstream)
+    {
+        driverio_finish_custom(dio);
+    }
+    else if (is_unix_io())
     {
         driverio_finish_unix(dio);
     }

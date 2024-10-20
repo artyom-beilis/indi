@@ -47,6 +47,7 @@ void MathPluginManagerClient::Initialise(int argc, char *argv[])
 
 void MathPluginManagerClient::Test()
 {
+    using std::cout;
     MathPluginsList AvailableMathPlugins;
 
     cout << "Testing Enumerate available plugins\n";

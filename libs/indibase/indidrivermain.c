@@ -293,6 +293,8 @@ void waitPingReply(const char * uid) {
     }
 }
 
+
+#ifndef INDI_AS_LIBRARY
 int main(int ac, char *av[])
 {
 #ifndef _WIN32
@@ -354,3 +356,32 @@ static void usage(void)
 
     exit(1);
 }
+
+#else
+
+int event_loop_main(int input_pipe_fd,int output_pipe_fd)
+{
+    FILE *fout = NULL;
+    if(output_pipe_fd >= 0) {
+        fout = fdopen(output_pipe_fd,"w");
+        fprintf(stderr,"Setting custom IO %p/%d\n",fout,output_pipe_fd);
+        driverio_custom_fostream(fout);
+    }
+    eventLoopThread = pthread_self();
+    
+    if(input_pipe_fd >= 0) {
+        clixml = newLilXML();
+        addCallback(input_pipe_fd, clientMsgCB, clixml);
+    }
+
+    /* service client */
+    eventLoop();
+
+    if(fout) {
+        driverio_custom_fostream(NULL);
+    }
+
+    return 0;
+}
+
+#endif

@@ -404,7 +404,11 @@ void MathPluginManagement::EnumeratePlugins()
     else
         snprintf(MATH_PLUGINS_DIRECTORY, 2048 - 1, INDI_MATH_PLUGINS_DIRECTORY);
 #else
-    snprintf(MATH_PLUGINS_DIRECTORY, 2048 - 1, INDI_MATH_PLUGINS_DIRECTORY);
+    const char *mpd = getenv("INDI_MATH_PLUGINS_DIRECTORY");
+    if(mpd)
+        snprintf(MATH_PLUGINS_DIRECTORY, 2048 - 1,"%s",mpd);
+    else
+        snprintf(MATH_PLUGINS_DIRECTORY, 2048 - 1, INDI_MATH_PLUGINS_DIRECTORY);
 #endif
 
     dp    = opendir(MATH_PLUGINS_DIRECTORY);
@@ -424,6 +428,10 @@ void MathPluginManagement::EnumeratePlugins()
                 continue;
             if (0 == strcmp(de->d_name, ".."))
                 continue;
+            #ifdef INDI_AS_LIBRARY                
+            if (strstr(de->d_name,"_MathPlugin") == nullptr)
+                continue;
+            #endif                
 
             // Try to load the plugin
             PluginPath.append(de->d_name);
