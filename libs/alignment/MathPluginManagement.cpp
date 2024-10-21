@@ -397,6 +397,11 @@ void MathPluginManagement::EnumeratePlugins()
 
     errno = 0;
     char MATH_PLUGINS_DIRECTORY[2048];
+#ifdef INDI_AS_LIBRARY
+# ifndef INDI_MATH_PLUGINS_DIRECTORY    
+#  define INDI_MATH_PLUGINS_DIRECTORY "."
+# endif
+#endif
 #if defined(__APPLE__)
     const char *indiprefix = getenv("INDIPREFIX");
     if (indiprefix)

@@ -57,6 +57,8 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <dlfcn.h>
+
 
 #include <assert.h>
 
@@ -928,14 +930,31 @@ static void dettachSharedBuffer(int fd, void * ptr, size_t size);
 
 #ifdef INDI_AS_LIBRARY
 
-extern "C" int indiserver_main()
+#ifndef USE_HIDDEN
+static void load_driver(std::string const &);
+#endif
+
+int indiserver_main(std::vector<std::string> drivers_to_load)
 {
+#ifdef USE_HIDDEN
     /* start each driver */
-    std::string dvrName = "thread_driver";
+    for(std::string driver : drivers_to_load) {
+        std::string dvrName = driver;
+        fprintf(stderr,"Loading driver %s\n",driver.c_str());
+        DvrInfo * dr = new ThreadDvrInfo();
+        dr->name = dvrName;
+        dr->start();
+    }
+#else
+    /* start each driver */
+    for(std::string driver : drivers_to_load) {
+        fprintf(stderr,"Loading driver %s\n",driver.c_str());
+        load_driver(driver);
+    }
     DvrInfo * dr = new ThreadDvrInfo();
-    dr->name = dvrName;
+    dr->name = "thread_driver";
     dr->start();
-    
+#endif    
     /* announce we are online */
     (new TcpServer(port))->listen();
 
@@ -2756,11 +2775,39 @@ ThreadDvrInfo * ThreadDvrInfo::clone() const
     return new ThreadDvrInfo(*this);
 }
 
-extern "C" int event_loop_main(int,int);
-
+//#define USE_HIDDEN
+#ifdef USE_HIDDEN
+typedef  int (*indi_driver_event_loop_main_type)(int,int);
+#else
+extern "C" int indi_driver_event_loop_main(int,int);
+static void load_driver(std::string const &name)
+{
+    void *h = dlopen(name.c_str(),RTLD_LAZY | RTLD_LOCAL);
+    if(!h) {
+        fprintf(stderr,"Failed to load library %s\n",name.c_str());
+        Bye();
+        return;
+    }
+}
+#endif
 
 void ThreadDvrInfo::start()
 {
+#ifdef USE_HIDDEN
+    void *h = dlopen(name.c_str(),RTLD_LAZY | RTLD_LOCAL);
+    if(!h) {
+        fprintf(stderr,"Failed to load library %s\n",name.c_str());
+        Bye();
+        return;
+    }
+    void *f = dlsym(h,"indi_driver_event_loop_main");
+    if(!f) {
+        fprintf(stderr,"Failed to find indi_driver_event_loop_main in library %s\n",name.c_str());
+        Bye();
+        return;
+    }
+    indi_driver_event_loop_main_type func = reinterpret_cast<indi_driver_event_loop_main_type>(f);
+#endif
     Msg *mp;
     int rp[2], wp[2];
 
@@ -2790,8 +2837,12 @@ void ThreadDvrInfo::start()
     }
 
     std::thread local_thread([=]() {
-        fprintf(stderr,"Starting event loop with fd %d/%d\n",wp[0],rp[1]);
-        event_loop_main(wp[0],rp[1]);
+        fprintf(stderr,"Starting event loop with fd %d/%d for driver %s\n",wp[0],rp[1],name.c_str());
+#ifdef USE_HIDDEN        
+        func(wp[0],rp[1]);
+#else
+        indi_driver_event_loop_main(wp[0],rp[1]);
+#endif                
         /* don't need child's side of pipes on exit */
         ::close(wp[0]);
         ::close(rp[1]);

@@ -359,7 +359,8 @@ static void usage(void)
 
 #else
 
-int event_loop_main(int input_pipe_fd,int output_pipe_fd)
+__attribute__((visibility("default")))
+int indi_driver_event_loop_main(int input_pipe_fd,int output_pipe_fd)
 {
     FILE *fout = NULL;
     if(output_pipe_fd >= 0) {
