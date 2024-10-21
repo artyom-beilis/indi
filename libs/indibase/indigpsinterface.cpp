@@ -268,6 +268,8 @@ bool GPSInterface::setSystemTime(time_t &raw_time)
 #else
     stime(&raw_time);
 #endif
+#elif defined __ANDROID__
+    INDI_UNUSED(raw_time);
 #else
     stime(&raw_time);
 #endif

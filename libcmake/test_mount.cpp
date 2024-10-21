@@ -1,5 +1,10 @@
+#ifdef INDI_AS_LIBRARY
+#include "baseclient.h"
+#include "basedevice.h"
+#else
 #include <libindi/baseclient.h>
 #include <libindi/basedevice.h>
+#endif
 #include <sys/time.h>
 #include <iostream>
 #include <sstream>

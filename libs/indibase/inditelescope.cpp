@@ -33,7 +33,7 @@
 #include <cstring>
 #include <ctime>
 #include <unistd.h>
-#include <wordexp.h>
+#include "wordexp_alt.h"
 #include <limits>
 
 namespace INDI

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
 PROJECT(indilib C CXX)
 
+option(ENABLE_CCD "Build libindi with CCD support" OFF)
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
         "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
@@ -14,7 +16,28 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined") 
 
+find_path(NOVA_INC libnova/utility.h)
+find_library(NOVA_LIB NAMES nova nova-0.16)
+
+find_path(GSL_INC gsl/gsl_blas.h)
+find_library(GSL_LIB NAMES gsl)
+
+find_path(EV_INC ev.h)
+find_library(EV_LIB ev)
+
+include_directories(${NOVA_INC})
+include_directories(${EV_INC})
+include_directories(${GSL_INC})
+
+set(CMAKE_INDI_VERSION_MAJOR 2)
+set(CMAKE_INDI_VERSION_MINOR 1)
+set(CMAKE_INDI_VERSION_RELEASE 0)
+
+
+configure_file(../libs/indicore/indiapi.h.in indiapi.h @ONLY)
+
 include_directories(
+    ${CMAKE_CURRENT_BINARY_DIR}
     .
     ../libs/sockets
     ../libs/indibase/timer/
@@ -24,38 +47,41 @@ include_directories(
     ../libs/indicore
     ../libs/indibase
     ../libs/indidevice
-    ../build/libs/indicore
     ../libs/eventloop
     ../libs/indibase/thread/
     ../libs/indibase/stream/
     ../libs/indiclient/
     ../libs/indiabstractclient/ )
 
-
-set(INDILIB_CCD_SRC 
- ../libs/indibase/stream/streammanager.cpp
- ../libs/indibase/stream/fpsmeter.cpp
- ../libs/indibase/stream/gammalut16.cpp
- ../libs/indibase/stream/recorder/recorderinterface.cpp
- ../libs/indibase/stream/recorder/recordermanager.cpp
- ../libs/indibase/stream/recorder/serrecorder.cpp
- ../libs/indibase/stream/encoder/encodermanager.cpp
- ../libs/indibase/stream/encoder/encoderinterface.cpp
- ../libs/indibase/stream/encoder/rawencoder.cpp
- ../libs/indibase/stream/encoder/mjpegencoder.cpp
- ../libs/indibase/indiccdchip.cpp
- ../libs/indibase/indiccd.cpp
- ../libs/indibase/thread/indisinglethreadpool.cpp
- ../libs/indibase/dsp/convolution.cpp ../libs/indibase/dsp/dspinterface.cpp ../libs/indibase/dsp/manager.cpp ../libs/indibase/dsp/transforms.cpp
- ../libs/indibase/indisensorinterface.cpp
- ../libs/indibase/stream/jpegutils.c
- ../libs/indibase/stream/ccvt_c2.c
- ../libs/indibase/stream/ccvt_misc.c
- ../libs/fpack/fpack.c ../libs/fpack/fpackutil.c
- ../libs/dsp/align.c ../libs/dsp/buffer.c ../libs/dsp/convert.c ../libs/dsp/convolution.c
- ../libs/dsp/feature.c ../libs/dsp/fft.c ../libs/dsp/file.c ../libs/dsp/filters.c ../libs/dsp/fits.c ../libs/dsp/signals.c ../libs/dsp/stats.c ../libs/dsp/stream.c
- )
-
+if(ENABLE_CCD)
+    set(INDILIB_CCD_SRC 
+     ../libs/indibase/stream/streammanager.cpp
+     ../libs/indibase/stream/fpsmeter.cpp
+     ../libs/indibase/stream/gammalut16.cpp
+     ../libs/indibase/stream/recorder/recorderinterface.cpp
+     ../libs/indibase/stream/recorder/recordermanager.cpp
+     ../libs/indibase/stream/recorder/serrecorder.cpp
+     ../libs/indibase/stream/encoder/encodermanager.cpp
+     ../libs/indibase/stream/encoder/encoderinterface.cpp
+     ../libs/indibase/stream/encoder/rawencoder.cpp
+     ../libs/indibase/stream/encoder/mjpegencoder.cpp
+     ../libs/indibase/indiccdchip.cpp
+     ../libs/indibase/indiccd.cpp
+     ../libs/indibase/thread/indisinglethreadpool.cpp
+     ../libs/indibase/dsp/convolution.cpp ../libs/indibase/dsp/dspinterface.cpp ../libs/indibase/dsp/manager.cpp ../libs/indibase/dsp/transforms.cpp
+     ../libs/indibase/indisensorinterface.cpp
+     ../libs/indibase/stream/jpegutils.c
+     ../libs/indibase/stream/ccvt_c2.c
+     ../libs/indibase/stream/ccvt_misc.c
+     ../libs/fpack/fpack.c ../libs/fpack/fpackutil.c
+     ../libs/dsp/align.c ../libs/dsp/buffer.c ../libs/dsp/convert.c ../libs/dsp/convolution.c
+     ../libs/dsp/feature.c ../libs/dsp/fft.c ../libs/dsp/file.c ../libs/dsp/filters.c ../libs/dsp/fits.c ../libs/dsp/signals.c ../libs/dsp/stats.c ../libs/dsp/stream.c
+     )
+    set(LIBDEPS_CCD cfitsio jpeg fftw3)
+else()
+    set(INDILIB_CCD_SRC )
+    set(LIBDEPS_CCD)
+endif()
 
 set(INDILIB_SRC 
  ../libs/indibase/indirotatorinterface.cpp
@@ -123,8 +149,8 @@ set(INDILIB_SRC
  ../libs/indibase/indidriver.c ../libs/indibase/indidriverio.c ../libs/indibase/indidrivermain.c 
 )
 
-set(LIBDEPS_CCD cfitsio jpeg fftw3)
-set(LIBDEPS nova z gsl gslcblas)
+#set(LIBDEPS nova z gsl gslcblas)
+set(LIBDEPS ${NOVA_LIB} z ${GSL_LIB})
 
 set(USE_HIDDEN FALSE)
 
@@ -146,13 +172,15 @@ add_library(indi_unified SHARED ${INDILIB_SRC} ${INDILIB_CCD_SRC})
 target_link_libraries(indi_unified ${LIBDEPS} ${LIBDEPS_CCD})
 
 add_library(indi_unified_client_server SHARED ../libs/indiclient/baseclient.cpp ../indiserver/indiserver.cpp)
-target_link_libraries(indi_unified_client_server indi_unified ev)
+target_link_libraries(indi_unified_client_server indi_unified ${EV_LIB})
 
-add_library(indidriver_ccd_simulator SHARED ../drivers/ccd/ccd_simulator.cpp)
-if(USE_HIDDEN) 
-    set_target_properties(indidriver_ccd_simulator PROPERTIES CXX_VISIBILITY_PRESET hidden)
+if(ENABLE_CCD)
+    add_library(indidriver_ccd_simulator SHARED ../drivers/ccd/ccd_simulator.cpp)
+    if(USE_HIDDEN) 
+        set_target_properties(indidriver_ccd_simulator PROPERTIES CXX_VISIBILITY_PRESET hidden)
+    endif()    
+    target_link_libraries(indidriver_ccd_simulator ${INDI_DRV})
 endif()    
-target_link_libraries(indidriver_ccd_simulator ${INDI_DRV})
 
 add_library(indidriver_telescope_skywatcherAltAz SHARED ../drivers/telescope/skywatcherAPIMount.cpp ../drivers/telescope/skywatcherAPI.cpp)
 if(USE_HIDDEN) 
@@ -172,3 +200,33 @@ target_link_libraries(indi_Nearest_MathPlugin indi_unified)
 
 add_executable(test_mount test_mount.cpp)
 target_link_libraries(test_mount indi_unified_client_server indi_unified)
+
+file(GLOB INST_HDR 
+    ../libs/indiclient/*.h
+    ../libs/indiabstractclient/*.h
+    ../libs/indidevice/*.h
+    ../libs/indicore/*.h
+    ../libs/*.h
+    ../libs/indidevice/property/*.h)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/indiapi.h
+    ${INST_HDR}
+    DESTINATION
+    include/libindi)
+
+install(TARGETS 
+    indi_unified
+    indi_unified_client_server
+    indidriver_telescope_simulator
+    indidriver_telescope_skywatcherAltAz
+    indi_SVD_MathPlugin indi_Nearest_MathPlugin
+    LIBRARY DESTINATION lib
+    PUBLIC_HEADER DESTINATION include/libindi)
+
+if(ENABLE_CCD) 
+    install(TARGETS 
+        indidriver_ccd_simulator
+        LIBRARY DESTINATION lib)
+endif()
+

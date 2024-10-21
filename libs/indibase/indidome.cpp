@@ -35,7 +35,7 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
-#include <wordexp.h>
+#include "wordexp_alt.h"
 #include <pwd.h>
 #include <unistd.h>
 #include <limits>
