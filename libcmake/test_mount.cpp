@@ -124,6 +124,25 @@ public:
         else if(prop.isNameMatch("EQUATORIAL_EOD_COORD")) {
             log_ra_de(prop);
         }
+        else if(prop.isNameMatch("GEOGRAPHIC_COORD")) {
+            set_geolocation(prop);
+        }
+    }
+
+    bool coord_def_ = false;
+    void set_geolocation(INDI::PropertyNumber p)
+    {
+        if(coord_def_)
+            return;
+        auto lat = p.findWidgetByName("LAT");
+        auto lon = p.findWidgetByName("LONG");
+        if(!lat || !lon) {
+            LOG("NO WID\n");
+        }
+        lat->setValue(31.0);
+        lon->setValue(34.0);
+        sendNewProperty(p);
+        coord_def_ = true;
     }
     
     void go_to(double RA,double DEC)
