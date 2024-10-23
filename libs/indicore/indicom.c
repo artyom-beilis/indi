@@ -384,7 +384,7 @@ int tty_timeout(int fd, int timeout)
 
 int tty_timeout_microseconds(int fd, long timeout_seconds, long timeout_microseconds)
 {
-    #if defined(_WIN32) || defined(ANDROID)
+    #if defined(_WIN32) /*|| defined(ANDROID)*/
     INDI_UNUSED(fd);
     INDI_UNUSED(timeout_seconds);
     INDI_UNUSED(timeout_microseconds);

@@ -4,7 +4,7 @@ PROJECT(indilib C CXX)
 option(ENABLE_CCD "Build libindi with CCD support" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING
         "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
           FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
@@ -14,13 +14,14 @@ endif(NOT CMAKE_BUILD_TYPE)
 set(FLAGS "-fPIC -DINDI_AS_LIBRARY -Wall -Wextra -DHAVE_CLOCK_GETTIME -DHAVE_LIBNOVA")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
-set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined") 
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined") 
 
 find_path(NOVA_INC libnova/utility.h)
 find_library(NOVA_LIB NAMES nova nova-0.16)
 
 find_path(GSL_INC gsl/gsl_blas.h)
 find_library(GSL_LIB NAMES gsl)
+find_library(GSLCBLAS_LIB NAMES gslcblas)
 
 find_path(EV_INC ev.h)
 find_library(EV_LIB ev)
@@ -150,7 +151,7 @@ set(INDILIB_SRC
 )
 
 #set(LIBDEPS nova z gsl gslcblas)
-set(LIBDEPS ${NOVA_LIB} z ${GSL_LIB})
+set(LIBDEPS ${NOVA_LIB} z ${GSL_LIB} ${GSLCBLAS_LIB})
 
 set(USE_HIDDEN FALSE)
 
@@ -191,6 +192,8 @@ target_link_libraries(indidriver_telescope_skywatcherAltAz ${INDI_DRV})
 add_library(indidriver_telescope_simulator SHARED ../drivers/telescope/telescope_simulator.cpp ../drivers/telescope/scopesim_helper.cpp)
 target_link_libraries(indidriver_telescope_simulator ${INDI_DRV})
 
+add_library(indidriver_telescope_synscan SHARED ../drivers/telescope/synscandriver.cpp ../drivers/telescope/synscanmount.cpp)
+target_link_libraries(indidriver_telescope_synscan ${INDI_DRV})
 
 add_library(indi_SVD_MathPlugin SHARED ../libs/alignment/SVDMathPlugin.cpp)
 target_link_libraries(indi_SVD_MathPlugin indi_unified)
@@ -220,6 +223,7 @@ install(TARGETS
     indi_unified_client_server
     indidriver_telescope_simulator
     indidriver_telescope_skywatcherAltAz
+    indidriver_telescope_synscan
     indi_SVD_MathPlugin indi_Nearest_MathPlugin
     LIBRARY DESTINATION lib
     PUBLIC_HEADER DESTINATION include/libindi)

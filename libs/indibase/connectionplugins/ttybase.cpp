@@ -83,7 +83,7 @@ TTYBase::~TTYBase()
 
 TTYBase::TTY_RESPONSE TTYBase::checkTimeout(uint8_t timeout)
 {
-#if defined(_WIN32) || defined(ANDROID)
+#if defined(_WIN32) /* || defined(ANDROID)*/
     INDI_UNUSED(timeout);
     return TTY_ERRNO;
 #else
