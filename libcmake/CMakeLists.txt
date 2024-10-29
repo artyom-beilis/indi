@@ -12,7 +12,7 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 
 set(FLAGS "-fPIC -DINDI_AS_LIBRARY -Wall -Wextra -DHAVE_CLOCK_GETTIME -DHAVE_LIBNOVA")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ${FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined") 
 
@@ -86,6 +86,7 @@ endif()
 
 set(INDILIB_SRC 
  ../libs/indibase/indirotatorinterface.cpp
+ ../libs/indibase/indiweatherinterface.cpp
  ../libs/indibase/defaultdevice.cpp
  ../libs/indibase/fitskeyword.cpp
  ../libs/indibase/indicontroller.cpp
@@ -153,21 +154,7 @@ set(INDILIB_SRC
 #set(LIBDEPS nova z gsl gslcblas)
 set(LIBDEPS ${NOVA_LIB} z ${GSL_LIB} ${GSLCBLAS_LIB})
 
-set(USE_HIDDEN FALSE)
-
-
-if(USE_HIDDEN) 
-    set(INDI_DRV indi_driver)
-    add_library(indi_driver STATIC ${INDILIB_SRC} ${INDILIB_CCD_SRC})
-    target_link_libraries(indi_driver ${LIBDEPS} ${LIBDEPS_CCD})
-
-    set_target_properties(indi_driver PROPERTIES 
-        CXX_VISIBILITY_PRESET hidden
-        C_VISIBILITY_PRESET hidden)
-    add_definitions(-DUSE_HIDDEN)
-else()    
-    set(INDI_DRV indi_unified)
-endif()
+set(INDI_DRV indi_unified)
 
 add_library(indi_unified SHARED ${INDILIB_SRC} ${INDILIB_CCD_SRC})
 target_link_libraries(indi_unified ${LIBDEPS} ${LIBDEPS_CCD})
@@ -177,16 +164,10 @@ target_link_libraries(indi_unified_client_server indi_unified ${EV_LIB})
 
 if(ENABLE_CCD)
     add_library(indidriver_ccd_simulator SHARED ../drivers/ccd/ccd_simulator.cpp)
-    if(USE_HIDDEN) 
-        set_target_properties(indidriver_ccd_simulator PROPERTIES CXX_VISIBILITY_PRESET hidden)
-    endif()    
     target_link_libraries(indidriver_ccd_simulator ${INDI_DRV})
 endif()    
 
 add_library(indidriver_telescope_skywatcherAltAz SHARED ../drivers/telescope/skywatcherAPIMount.cpp ../drivers/telescope/skywatcherAPI.cpp)
-if(USE_HIDDEN) 
-    set_target_properties(indidriver_telescope_skywatcherAltAz PROPERTIES CXX_VISIBILITY_PRESET hidden)
-endif()
 target_link_libraries(indidriver_telescope_skywatcherAltAz ${INDI_DRV})
 
 add_library(indidriver_telescope_simulator SHARED ../drivers/telescope/telescope_simulator.cpp ../drivers/telescope/scopesim_helper.cpp)
@@ -194,6 +175,69 @@ target_link_libraries(indidriver_telescope_simulator ${INDI_DRV})
 
 add_library(indidriver_telescope_synscan SHARED ../drivers/telescope/synscandriver.cpp ../drivers/telescope/synscanmount.cpp)
 target_link_libraries(indidriver_telescope_synscan ${INDI_DRV})
+
+add_library(indidriver_telescope_lx200basic SHARED ../drivers/telescope/lx200driver.cpp ../drivers/telescope/lx200basic.cpp)
+target_link_libraries(indidriver_telescope_lx200basic ${INDI_DRV})
+
+add_library(indidriver_telescope_lx200_TeenAstro SHARED ../drivers/telescope/lx200driver.cpp ../drivers/telescope/lx200_TeenAstro.cpp)
+target_link_libraries(indidriver_telescope_lx200_TeenAstro ${INDI_DRV})
+
+add_library(indidriver_telescope_lx200generic SHARED 
+    ../drivers/telescope/lx200driver.cpp
+    ../drivers/telescope/lx200autostar.cpp
+    ../drivers/telescope/lx200_16.cpp
+    ../drivers/telescope/lx200gps.cpp
+    ../drivers/telescope/lx200generic.cpp
+    ../drivers/telescope/lx200telescope.cpp
+    ../drivers/telescope/lx200classic.cpp
+    ../drivers/telescope/lx200gemini.cpp
+    ../drivers/telescope/lx200zeq25.cpp
+    ../drivers/telescope/lx200am5.cpp
+    ../drivers/telescope/lx200gotonova.cpp
+    ../drivers/telescope/lx200pulsar2.cpp
+    ../drivers/telescope/lx200apdriver.cpp
+    ../drivers/telescope/lx200ap_v2.cpp
+    ../drivers/telescope/lx200fs2.cpp
+    ../drivers/telescope/lx200ss2000pc.cpp
+    ../drivers/telescope/lx200_OnStep.cpp
+    ../drivers/telescope/lx200_OpenAstroTech.cpp
+    ../drivers/telescope/lx200_pegasus_nyx101.cpp
+    ../drivers/telescope/lx200_10micron.cpp
+    ../drivers/telescope/ioptronHC8406.cpp
+    ../drivers/telescope/eq500x.cpp)
+
+target_link_libraries(indidriver_telescope_lx200generic ${INDI_DRV})
+
+add_library(indidriver_telescope_rainbow SHARED ../drivers/telescope/rainbow.cpp ../drivers/telescope/lx200driver.cpp)
+target_link_libraries(indidriver_telescope_rainbow ${INDI_DRV})
+
+add_library(indidriver_telescope_crux_mount SHARED ../drivers/telescope/crux_mount.cpp)
+target_link_libraries(indidriver_telescope_crux_mount ${INDI_DRV})
+
+add_library(indidriver_telescope_temma SHARED ../drivers/telescope/temmadriver.cpp)
+target_link_libraries(indidriver_telescope_temma ${INDI_DRV})
+
+add_library(indidriver_telescope_paramount SHARED ../drivers/telescope/paramount.cpp)
+target_link_libraries(indidriver_telescope_paramount  ${INDI_DRV})
+
+add_library(indidriver_telescope_astrotrac SHARED ../drivers/telescope/astrotrac.cpp)
+target_link_libraries(indidriver_telescope_astrotrac ${INDI_DRV})
+
+add_library(indidriver_telescope_skycommander SHARED ../drivers/telescope/skycommander.cpp)
+target_link_libraries(indidriver_telescope_skycommander ${INDI_DRV})
+
+add_library(indidriver_telescope_ieq SHARED ../drivers/telescope/ieqdriverbase.cpp ../drivers/telescope/ieqpro.cpp)
+target_link_libraries(indidriver_telescope_ieq ${INDI_DRV})
+
+add_library(indidriver_telescope_ioptronv3 SHARED ../drivers/telescope/ioptronv3driver.cpp ../drivers/telescope/ioptronv3.cpp)
+target_link_libraries(indidriver_telescope_ioptronv3 ${INDI_DRV}) 
+
+add_library(indidriver_telescope_pmc8 SHARED ../drivers/telescope/pmc8driver.cpp ../drivers/telescope/pmc8.cpp)
+target_link_libraries(indidriver_telescope_pmc8 ${INDI_DRV})
+
+# need http lib
+#add_library(indidriver_telescope_planewave SHARED ../drivers/telescope/planewave_mount.cpp)
+#target_link_libraries(indidriver_telescope_planewave ${INDI_DRV})\
 
 add_library(indi_SVD_MathPlugin SHARED ../libs/alignment/SVDMathPlugin.cpp)
 target_link_libraries(indi_SVD_MathPlugin indi_unified)
@@ -224,6 +268,19 @@ install(TARGETS
     indidriver_telescope_simulator
     indidriver_telescope_skywatcherAltAz
     indidriver_telescope_synscan
+    indidriver_telescope_lx200basic
+    indidriver_telescope_lx200_TeenAstro
+    indidriver_telescope_lx200generic
+    indidriver_telescope_rainbow
+    indidriver_telescope_crux_mount
+    indidriver_telescope_temma
+    indidriver_telescope_paramount
+    indidriver_telescope_astrotrac
+    indidriver_telescope_skycommander
+    indidriver_telescope_ieq
+    indidriver_telescope_ioptronv3
+    indidriver_telescope_pmc8
+    #indidriver_telescope_planewave
     indi_SVD_MathPlugin indi_Nearest_MathPlugin
     LIBRARY DESTINATION lib
     PUBLIC_HEADER DESTINATION include/libindi)
