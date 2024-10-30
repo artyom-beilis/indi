@@ -44,6 +44,7 @@ include_directories(
     ../libs/indibase/timer/
     ../libs/dsp
     ../libs
+    ../libs/httplib
     ../libs/indidevice/property/
     ../libs/indicore
     ../libs/indibase
@@ -235,9 +236,8 @@ target_link_libraries(indidriver_telescope_ioptronv3 ${INDI_DRV})
 add_library(indidriver_telescope_pmc8 SHARED ../drivers/telescope/pmc8driver.cpp ../drivers/telescope/pmc8.cpp)
 target_link_libraries(indidriver_telescope_pmc8 ${INDI_DRV})
 
-# need http lib
-#add_library(indidriver_telescope_planewave SHARED ../drivers/telescope/planewave_mount.cpp)
-#target_link_libraries(indidriver_telescope_planewave ${INDI_DRV})\
+add_library(indidriver_telescope_planewave SHARED ../drivers/telescope/planewave_mount.cpp)
+target_link_libraries(indidriver_telescope_planewave ${INDI_DRV})
 
 add_library(indi_SVD_MathPlugin SHARED ../libs/alignment/SVDMathPlugin.cpp)
 target_link_libraries(indi_SVD_MathPlugin indi_unified)
@@ -280,7 +280,7 @@ install(TARGETS
     indidriver_telescope_ieq
     indidriver_telescope_ioptronv3
     indidriver_telescope_pmc8
-    #indidriver_telescope_planewave
+    indidriver_telescope_planewave
     indi_SVD_MathPlugin indi_Nearest_MathPlugin
     LIBRARY DESTINATION lib
     PUBLIC_HEADER DESTINATION include/libindi)
