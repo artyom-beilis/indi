@@ -183,12 +183,12 @@ target_link_libraries(indidriver_telescope_lx200basic ${INDI_DRV})
 add_library(indidriver_telescope_lx200_TeenAstro SHARED ../drivers/telescope/lx200driver.cpp ../drivers/telescope/lx200_TeenAstro.cpp)
 target_link_libraries(indidriver_telescope_lx200_TeenAstro ${INDI_DRV})
 
-add_library(indidriver_telescope_lx200generic SHARED 
+add_library(indi_lx200generic_base SHARED 
     ../drivers/telescope/lx200driver.cpp
     ../drivers/telescope/lx200autostar.cpp
+    ../drivers/telescope/lx200generic.cpp
     ../drivers/telescope/lx200_16.cpp
     ../drivers/telescope/lx200gps.cpp
-    ../drivers/telescope/lx200generic.cpp
     ../drivers/telescope/lx200telescope.cpp
     ../drivers/telescope/lx200classic.cpp
     ../drivers/telescope/lx200gemini.cpp
@@ -207,7 +207,37 @@ add_library(indidriver_telescope_lx200generic SHARED
     ../drivers/telescope/ioptronHC8406.cpp
     ../drivers/telescope/eq500x.cpp)
 
-target_link_libraries(indidriver_telescope_lx200generic ${INDI_DRV})
+target_link_libraries(indi_lx200generic_base ${INDI_DRV})
+
+macro(add_lx200_driver DRV_NAME)
+    add_library(indidriver_telescope_${DRV_NAME} SHARED ../drivers/telescope/lx200_lib_loader.cpp)
+    target_compile_definitions(indidriver_telescope_${DRV_NAME} PRIVATE lx200_driver_indi_${DRV_NAME}=1)
+    target_link_libraries(indidriver_telescope_${DRV_NAME} indi_lx200generic_base ${INDI_DRV})
+    install(TARGETS 
+        indidriver_telescope_${DRV_NAME}
+        LIBRARY DESTINATION lib)
+endmacro()
+
+add_lx200_driver(lx200classic)
+add_lx200_driver(lx200_OnStep)
+add_lx200_driver(lx200gps)
+add_lx200_driver(lx200_16)
+add_lx200_driver(lx200autostar)
+add_lx200_driver(lx200ap_v2)
+add_lx200_driver(lx200gemini)
+add_lx200_driver(lx200zeq25)
+add_lx200_driver(lx200gotonova)
+add_lx200_driver(ioptronHC8406)
+add_lx200_driver(lx200pulsar2)
+add_lx200_driver(lx200ss2000pc)
+add_lx200_driver(lx200fs2)
+add_lx200_driver(lx200_10micron)
+add_lx200_driver(eq500x)
+add_lx200_driver(lx200am5)
+add_lx200_driver(lx200_OpenAstroTech)
+add_lx200_driver(lx200_pegasus_nyx101)
+add_lx200_driver(lx200generic)
+
 
 add_library(indidriver_telescope_rainbow SHARED ../drivers/telescope/rainbow.cpp ../drivers/telescope/lx200driver.cpp)
 target_link_libraries(indidriver_telescope_rainbow ${INDI_DRV})
