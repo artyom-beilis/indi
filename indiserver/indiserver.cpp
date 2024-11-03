@@ -65,6 +65,10 @@
 #include "indiapi.h"
 #include "indidevapi.h"
 #include "sharedblob.h"
+#ifdef INDI_AS_LIBRARY
+#include "indiserver_lib.h"
+#include "indidrivermain.h"
+#endif
 #include "lilxml.h"
 #include "base64.h"
 
@@ -797,12 +801,32 @@ class LocalDvrInfo: public DvrInfo
 class ThreadDvrInfo: public DvrInfo
 {
         ev::io     eio;         /* Event loop io events */
-        std::thread worker;
+    static std::thread worker;
+
+    static volatile bool completed;
 
     protected:
         ThreadDvrInfo(const ThreadDvrInfo &model);
 
     public:
+        static void shutdown()
+        {
+            if(worker.joinable()) {
+                indi_driver_event_loop_main_stop();
+                for(int i=0;i<20;i++) {
+                    if(completed) {
+                        worker.join();
+                        return;
+                    }
+                    usleep(100000);
+                }
+                fprintf(stderr,"indiserver: Too much time waiting for driver - cancel\n");
+                pthread_cancel(worker.native_handle());
+                worker.join();
+                fprintf(stderr,"Done\n");
+            }
+        }
+
         std::string envDev;
         std::string envConfig;
         std::string envSkel;
@@ -820,6 +844,8 @@ class ThreadDvrInfo: public DvrInfo
             return "";
         }
 };
+std::thread ThreadDvrInfo::worker;
+volatile bool ThreadDvrInfo::completed = false;
 
 #endif
 
@@ -915,8 +941,10 @@ static int maxrestarts   = DEFMAXRESTART;
 
 static std::vector<XMLEle *> findBlobElements(XMLEle * root);
 
+#ifndef INDI_AS_LIBRARY
 static void logStartup(int ac, char *av[]);
 static void usage(void);
+#endif
 static void noSIGPIPE(void);
 static char *indi_tstamp(char *s);
 static void logDMsg(XMLEle *root, const char *dev);
@@ -930,39 +958,74 @@ static void dettachSharedBuffer(int fd, void * ptr, size_t size);
 
 #ifdef INDI_AS_LIBRARY
 
-#ifndef USE_HIDDEN
 static void load_driver(std::string const &);
-#endif
+
+namespace {
+    class LoopBreaker {
+    public:
+        volatile static bool shutdown;
+        LoopBreaker()
+        {
+            timer_.set(loop);
+            timer_.set<LoopBreaker,&LoopBreaker::check_break>(this);
+            timer_.start(0.5);
+        }
+        void check_break()
+        {
+            timer_.start(0.5);
+            if(shutdown)
+                loop.unloop(ev::ALL);
+        }
+    private:
+        ev::timer timer_;
+    };
+    volatile bool LoopBreaker::shutdown;
+}
 
 int indiserver_main(std::vector<std::string> drivers_to_load)
 {
-#ifdef USE_HIDDEN
+    fprintf(stderr,"Starting indi server\n");
+    maxrestarts = 0;
+    noSIGPIPE();
     /* start each driver */
+    bool start_threaded = false;
     for(std::string driver : drivers_to_load) {
-        std::string dvrName = driver;
-        fprintf(stderr,"Loading driver %s\n",driver.c_str());
+        if (driver.find('@') != std::string::npos)
+        {
+            DvrInfo *dr = new RemoteDvrInfo();
+            dr->name = driver;
+            dr->start();
+        }
+        else {
+            start_threaded = true;
+            fprintf(stderr,"Loading driver %s\n",driver.c_str());
+            load_driver(driver);
+        }
+    }
+    if(start_threaded) {
         DvrInfo * dr = new ThreadDvrInfo();
-        dr->name = dvrName;
+        dr->name = "thread_driver";
         dr->start();
     }
-#else
-    /* start each driver */
-    for(std::string driver : drivers_to_load) {
-        fprintf(stderr,"Loading driver %s\n",driver.c_str());
-        load_driver(driver);
-    }
-    DvrInfo * dr = new ThreadDvrInfo();
-    dr->name = "thread_driver";
-    dr->start();
-#endif    
     /* announce we are online */
     (new TcpServer(port))->listen();
 
+    LoopBreaker lb;
     /* handle new clients and all io */
     loop.loop();
+    fprintf(stderr,"IndiServer main loop exited\n");
 
     return (0);
 }
+
+void indiserver_main_shutdown()
+{
+    ThreadDvrInfo::shutdown();
+    LoopBreaker::shutdown = true;
+    loop.unloop(ev::ALL);
+    fprintf(stderr,"Server notified\n");
+}
+
 
 #else
 
@@ -1122,6 +1185,8 @@ int main(int ac, char *av[])
 
 #endif // INDI_AS_LIBRARY
 
+#ifndef INDI_AS_LIBRARY
+
 /* record we have started and our args */
 static void logStartup(int ac, char *av[])
 {
@@ -1163,6 +1228,18 @@ static void usage(void)
     exit(2);
 }
 
+#else
+void indiserver_main_reset_sigchld()
+{
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = SIG_DFL;
+    sigemptyset(&sa.sa_mask);
+    (void)sigaction(SIGCHLD, &sa, NULL);
+}
+
+#endif
+
 /* turn off SIGPIPE on bad write so we can handle it inline */
 static void noSIGPIPE()
 {
@@ -1172,6 +1249,7 @@ static void noSIGPIPE()
     sigemptyset(&sa.sa_mask);
     (void)sigaction(SIGPIPE, &sa, NULL);
 }
+
 
 /* start the given local INDI driver process.
  * exit if trouble.
@@ -2148,8 +2226,11 @@ void DvrInfo::close()
     if (terminate)
     {
         delete(this);
-        if ((!fifo) && (drivers.ids().empty()))
+#ifndef INDI_AS_LIBRARY
+        if ((!fifo) && (drivers.ids().empty())) {
             Bye();
+        }
+#endif        
         return;
     }
     else
@@ -2752,6 +2833,15 @@ ConcurrentSet<DvrInfo> DvrInfo::drivers;
 
 #ifdef INDI_AS_LIBRARY
 
+static void load_driver(std::string const &name)
+{
+    void *h = dlopen(name.c_str(),RTLD_LAZY | RTLD_LOCAL);
+    if(!h) {
+        fprintf(stderr,"Failed to load library %s\n",name.c_str());
+        Bye();
+        return;
+    }
+}
 
 ThreadDvrInfo::ThreadDvrInfo(): DvrInfo(false)
 {
@@ -2775,39 +2865,8 @@ ThreadDvrInfo * ThreadDvrInfo::clone() const
     return new ThreadDvrInfo(*this);
 }
 
-//#define USE_HIDDEN
-#ifdef USE_HIDDEN
-typedef  int (*indi_driver_event_loop_main_type)(int,int);
-#else
-extern "C" int indi_driver_event_loop_main(int,int);
-static void load_driver(std::string const &name)
-{
-    void *h = dlopen(name.c_str(),RTLD_LAZY | RTLD_LOCAL);
-    if(!h) {
-        fprintf(stderr,"Failed to load library %s\n",name.c_str());
-        Bye();
-        return;
-    }
-}
-#endif
-
 void ThreadDvrInfo::start()
 {
-#ifdef USE_HIDDEN
-    void *h = dlopen(name.c_str(),RTLD_LAZY | RTLD_LOCAL);
-    if(!h) {
-        fprintf(stderr,"Failed to load library %s\n",name.c_str());
-        Bye();
-        return;
-    }
-    void *f = dlsym(h,"indi_driver_event_loop_main");
-    if(!f) {
-        fprintf(stderr,"Failed to find indi_driver_event_loop_main in library %s\n",name.c_str());
-        Bye();
-        return;
-    }
-    indi_driver_event_loop_main_type func = reinterpret_cast<indi_driver_event_loop_main_type>(f);
-#endif
     Msg *mp;
     int rp[2], wp[2];
 
@@ -2838,19 +2897,15 @@ void ThreadDvrInfo::start()
 
     std::thread local_thread([=]() {
         fprintf(stderr,"Starting event loop with fd %d/%d for driver %s\n",wp[0],rp[1],name.c_str());
-#ifdef USE_HIDDEN        
-        func(wp[0],rp[1]);
-#else
         indi_driver_event_loop_main(wp[0],rp[1]);
-#endif                
+        fprintf(stderr,"Driver main loop exited\n");
         /* don't need child's side of pipes on exit */
         ::close(wp[0]);
         ::close(rp[1]);
-        
+        completed = true;
     });
 
     worker = std::move(local_thread);
-    worker.detach();
 
     setFds(rp[0], wp[1]);
 

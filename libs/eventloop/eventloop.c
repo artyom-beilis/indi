@@ -113,6 +113,14 @@ void eventLoop()
         oneLoop();
 }
 
+void eventLoopWhileTrue(int volatile *flag_ptr)
+{
+    /* run loop forever */
+    while (*flag_ptr)
+        oneLoop();
+}
+
+
 /* allow other timers/callbacks/workprocs to run until time out in maxms
  * or *flagp becomes non-0. wait forever if maxms is 0.
  * return 0 if flag did flip, else -1 if never changed and we timed out.
@@ -486,8 +494,16 @@ static void oneLoop()
         tvp->tv_sec  = (long)floor(late);
         tvp->tv_usec = (long)floor((late - tvp->tv_sec) * 1000000.0);
     }
-    else
+    else {
+#ifdef INDI_AS_LIBRARY
+        /// allow sutting down the loop
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        tvp = &tv;       
+#else 
         tvp = NULL;
+#endif        
+    }
 
     /* check file descriptors, timeout depending on pending work */
     ns = select(maxfd + 1, &rfd, NULL, NULL, tvp);

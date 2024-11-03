@@ -56,6 +56,14 @@ extern "C" {
 */
 extern void eventLoop();
 
+/** \fn void eventLoopWhileTrue()
+    \brief Main calls this to run event loop till *flag_ptr != 0
+*/
+extern void eventLoopWhileTrue(int volatile *flag_ptr);
+
+
+
+
 /** Register a new callback, \e fp, to be called with \e ud as argument when \e fd is ready.
 *
 * \param fd file descriptor.

@@ -34,6 +34,7 @@
 #include "eventloop.h"
 #include "indidevapi.h"
 #include "indidriver.h"
+#include "indidrivermain.h"
 #include "lilxml.h"
 
 #include <errno.h>
@@ -359,7 +360,12 @@ static void usage(void)
 
 #else
 
-__attribute__((visibility("default")))
+static volatile int run_flag = 0;
+int indi_driver_event_loop_main_stop()
+{
+    run_flag = 0;
+}
+
 int indi_driver_event_loop_main(int input_pipe_fd,int output_pipe_fd)
 {
     FILE *fout = NULL;
@@ -375,8 +381,9 @@ int indi_driver_event_loop_main(int input_pipe_fd,int output_pipe_fd)
         addCallback(input_pipe_fd, clientMsgCB, clixml);
     }
 
+    run_flag = 1;
     /* service client */
-    eventLoop();
+    eventLoopWhileTrue(&run_flag);
 
     if(fout) {
         driverio_custom_fostream(NULL);

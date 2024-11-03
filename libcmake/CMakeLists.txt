@@ -284,6 +284,7 @@ file(GLOB INST_HDR
     ../libs/indidevice/*.h
     ../libs/indicore/*.h
     ../libs/*.h
+    ../indiserver/*.h
     ../libs/indidevice/property/*.h)
 
 install(FILES
@@ -295,6 +296,7 @@ install(FILES
 install(TARGETS 
     indi_unified
     indi_unified_client_server
+    indi_lx200generic_base
     indidriver_telescope_simulator
     indidriver_telescope_skywatcherAltAz
     indidriver_telescope_synscan
