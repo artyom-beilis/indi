@@ -68,6 +68,7 @@
 #ifdef INDI_AS_LIBRARY
 #include "indiserver_lib.h"
 #include "indidrivermain.h"
+#include <pthread.h>
 #endif
 #include "lilxml.h"
 #include "base64.h"
@@ -821,8 +822,12 @@ class ThreadDvrInfo: public DvrInfo
                     usleep(100000);
                 }
                 fprintf(stderr,"indiserver: Too much time waiting for driver - cancel\n");
+#ifdef __ANDROID__
+                worker.detach();
+#else
                 pthread_cancel(worker.native_handle());
                 worker.join();
+#endif                
                 fprintf(stderr,"Done\n");
             }
         }
@@ -2864,6 +2869,7 @@ ThreadDvrInfo * ThreadDvrInfo::clone() const
 {
     return new ThreadDvrInfo(*this);
 }
+
 
 void ThreadDvrInfo::start()
 {
