@@ -320,20 +320,20 @@ if(WITH_3P)
     set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_azgti)
     target_compile_definitions(indidriver_telescope_azgti PRIVATE WITH_ALIGN WITH_ALIGN_GEEHALEL WITH_SCOPE_LIMITS)
 
-    add_library(indi_staradventurergti_telescope SHARED ${EQ_EXTRA}
+    add_library(indidriver_telescope_staradventurergti SHARED ${EQ_EXTRA}
         #${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurergti.cpp
         staradventurergti.cpp
         ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurergtibase.cpp)
-    target_link_libraries(indi_staradventurergti_telescope ${INDI_DRV})
-    set(EXTRA_INST ${EXTRA_INST} indi_staradventurergti_telescope)
+    target_link_libraries(indidriver_telescope_staradventurergti ${INDI_DRV})
+    set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_staradventurergti)
 
-    add_library(indi_staradventurer2i_telescope SHARED ${EQ_EXTRA}
+    add_library(indidriver_telescope_staradventurer2i SHARED ${EQ_EXTRA}
         #${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurer2i.cpp
         staradventurer2i.cpp
         ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurer2ibase.cpp)
-    target_link_libraries(indi_staradventurer2i_telescope ${INDI_DRV} rt)
-    set(EXTRA_INST ${EXTRA_INST} indi_staradventurer2i_telescope)
-    
+    target_link_libraries(indidriver_telescope_staradventurer2i ${INDI_DRV} rt)
+    set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_staradventurer2i)
+
         
     file(GLOB EQMOD_XML
          ${INDI_3RDPARTY_PATH}/indi-eqmod/*.xml
