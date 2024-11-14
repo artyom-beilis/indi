@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.13)
 PROJECT(indilib C CXX)
 
 option(ENABLE_CCD "Build libindi with CCD support" OFF)
+if(NOT INDI_3RDPARTY_PATH)
+    set(WITH_3P OFF)
+else()
+    set(WITH_3P ON)
+endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING
@@ -278,6 +283,73 @@ target_link_libraries(indi_Nearest_MathPlugin indi_unified)
 add_executable(test_mount test_mount.cpp)
 target_link_libraries(test_mount indi_unified_client_server indi_unified)
 
+set(EXTRA_INST )
+if(WITH_3P) 
+    include_directories(${INDI_3RDPARTY_PATH}/indi-eqmod/)
+    set(EQ_EXTRA
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/align/htm.c
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/align/chull/chull.c
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/align/align.cpp 
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/align/pointset.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/align/triangulate.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/align/triangulate_chull.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/scope-limits/scope-limits.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/eqmodbase.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/eqmoderror.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/skywatcher.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/simulator/simulator.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/simulator/skywatcher-simulator.cpp)
+
+
+    add_library(indidriver_telescope_eqmod SHARED
+        ${EQ_EXTRA}
+        #${INDI_3RDPARTY_PATH}/indi-eqmod/eqmod.cpp
+        eqmod.cpp
+        )
+    
+    target_link_libraries(indidriver_telescope_eqmod ${INDI_DRV})
+    set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_eqmod)
+
+    add_library(indidriver_telescope_azgti SHARED
+        ${EQ_EXTRA}
+        #${INDI_3RDPARTY_PATH}/indi-eqmod/azgti.cpp
+        azgti.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/azgtibase.cpp)
+    
+    target_link_libraries(indidriver_telescope_azgti ${INDI_DRV})
+    set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_azgti)
+    target_compile_definitions(indidriver_telescope_azgti PRIVATE WITH_ALIGN WITH_ALIGN_GEEHALEL WITH_SCOPE_LIMITS)
+
+    add_library(indi_staradventurergti_telescope SHARED ${EQ_EXTRA}
+        #${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurergti.cpp
+        staradventurergti.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurergtibase.cpp)
+    target_link_libraries(indi_staradventurergti_telescope ${INDI_DRV})
+    set(EXTRA_INST ${EXTRA_INST} indi_staradventurergti_telescope)
+
+    add_library(indi_staradventurer2i_telescope SHARED ${EQ_EXTRA}
+        #${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurer2i.cpp
+        staradventurer2i.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurer2ibase.cpp)
+    target_link_libraries(indi_staradventurer2i_telescope ${INDI_DRV} rt)
+    set(EXTRA_INST ${EXTRA_INST} indi_staradventurer2i_telescope)
+    
+        
+    file(GLOB EQMOD_XML
+         ${INDI_3RDPARTY_PATH}/indi-eqmod/*.xml
+         ${INDI_3RDPARTY_PATH}/indi-eqmod/*/*.xml
+         ${CMAKE_CURRENT_SOURCE_DIR}/*.xml)
+
+    install(FILES
+        ${EQMOD_XML}
+        DESTINATION
+        share/indi)
+
+    
+
+endif()
+
+
 file(GLOB INST_HDR 
     ../libs/indiclient/*.h
     ../libs/indiabstractclient/*.h
@@ -314,6 +386,7 @@ install(TARGETS
     indidriver_telescope_pmc8
     indidriver_telescope_planewave
     indi_SVD_MathPlugin indi_Nearest_MathPlugin
+    ${EXTRA_INST}
     LIBRARY DESTINATION lib
     PUBLIC_HEADER DESTINATION include/libindi)
 
