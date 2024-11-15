@@ -303,8 +303,7 @@ if(WITH_3P)
 
     add_library(indidriver_telescope_eqmod SHARED
         ${EQ_EXTRA}
-        #${INDI_3RDPARTY_PATH}/indi-eqmod/eqmod.cpp
-        eqmod.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/eqmod.cpp
         )
     
     target_link_libraries(indidriver_telescope_eqmod ${INDI_DRV})
@@ -312,8 +311,7 @@ if(WITH_3P)
 
     add_library(indidriver_telescope_azgti SHARED
         ${EQ_EXTRA}
-        #${INDI_3RDPARTY_PATH}/indi-eqmod/azgti.cpp
-        azgti.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/azgti.cpp
         ${INDI_3RDPARTY_PATH}/indi-eqmod/azgtibase.cpp)
     
     target_link_libraries(indidriver_telescope_azgti ${INDI_DRV})
@@ -321,17 +319,15 @@ if(WITH_3P)
     target_compile_definitions(indidriver_telescope_azgti PRIVATE WITH_ALIGN WITH_ALIGN_GEEHALEL WITH_SCOPE_LIMITS)
 
     add_library(indidriver_telescope_staradventurergti SHARED ${EQ_EXTRA}
-        #${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurergti.cpp
-        staradventurergti.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurergti.cpp
         ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurergtibase.cpp)
     target_link_libraries(indidriver_telescope_staradventurergti ${INDI_DRV})
     set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_staradventurergti)
 
     add_library(indidriver_telescope_staradventurer2i SHARED ${EQ_EXTRA}
-        #${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurer2i.cpp
-        staradventurer2i.cpp
+        ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurer2i.cpp
         ${INDI_3RDPARTY_PATH}/indi-eqmod/staradventurer2ibase.cpp)
-    target_link_libraries(indidriver_telescope_staradventurer2i ${INDI_DRV} rt)
+    target_link_libraries(indidriver_telescope_staradventurer2i ${INDI_DRV})
     set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_staradventurer2i)
 
         
