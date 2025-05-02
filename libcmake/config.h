@@ -9,6 +9,9 @@
 #define EQMOD_VERSION_MAJOR 1
 #define EQMOD_VERSION_MINOR 3
 
+#define CAUX_VERSION_MAJOR 1
+#define CAUX_VERSION_MINOR 4
+
 
 /* Set when theora is detected */
 /* #undef HAVE_THEORA */

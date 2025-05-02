@@ -58,7 +58,9 @@ include_directories(
     ../libs/indibase/thread/
     ../libs/indibase/stream/
     ../libs/indiclient/
-    ../libs/indiabstractclient/ )
+    ../libs/indiabstractclient/ 
+    ../libs/indibase/pid
+    )
 
 if(ENABLE_CCD)
     set(INDILIB_CCD_SRC 
@@ -173,6 +175,9 @@ if(ENABLE_CCD)
     target_link_libraries(indidriver_ccd_simulator ${INDI_DRV})
 endif()    
 
+add_library(indidriver_telescope_celestron_gps SHARED ../drivers/telescope/celestrondriver.cpp  ../drivers/telescope/celestrongps.cpp)
+target_link_libraries(indidriver_telescope_celestron_gps ${INDI_DRV})
+
 add_library(indidriver_telescope_skywatcherAltAz SHARED ../drivers/telescope/skywatcherAPIMount.cpp ../drivers/telescope/skywatcherAPI.cpp)
 target_link_libraries(indidriver_telescope_skywatcherAltAz ${INDI_DRV})
 
@@ -285,6 +290,13 @@ target_link_libraries(test_mount indi_unified_client_server indi_unified)
 
 set(EXTRA_INST )
 if(WITH_3P) 
+    include_directories(${INDI_3RDPARTY_PATH}/indi-celestronaux/)
+    add_library(indidriver_telescope_celestron_aux SHARED
+        ${INDI_3RDPARTY_PATH}/indi-celestronaux/auxproto.cpp
+        ${INDI_3RDPARTY_PATH}/indi-celestronaux/celestronaux.cpp)
+    target_link_libraries(indidriver_telescope_celestron_aux ${INDI_DRV})
+    set(EXTRA_INST ${EXTRA_INST} indidriver_telescope_celestron_aux)
+
     include_directories(${INDI_3RDPARTY_PATH}/indi-eqmod/)
     set(EQ_EXTRA
         ${INDI_3RDPARTY_PATH}/indi-eqmod/align/htm.c
@@ -366,6 +378,7 @@ install(TARGETS
     indi_unified_client_server
     indi_lx200generic_base
     indidriver_telescope_simulator
+    indidriver_telescope_celestron_gps
     indidriver_telescope_skywatcherAltAz
     indidriver_telescope_synscan
     indidriver_telescope_lx200basic
